@@ -1,0 +1,103 @@
+﻿Region,First network,Second network,Label OG,Label,fsbrainLabel
+mr_y_smri__area__dsk__bstmps_av,,,banks of superior temporal sulcus,Banks of superior temporal sulcus,bankssts
+mr_y_smri__area__dsk__cac_av,,,caudal anterior cingulate,Caudal anterior cingulate,caudalanteriorcingulate
+mr_y_smri__area__dsk__cmfrt_av,,,caudal middle frontal,Caudal middle frontal,caudalmiddlefrontal
+mr_y_smri__area__dsk__cn_av,,,cuneus,Cuneus,cuneus
+mr_y_smri__area__dsk__er_av,,,entorhinal,Entorhinal,entorhinal
+mr_y_smri__area__dsk__ff_av,,,fusiform,Fusiform,fusiform
+mr_y_smri__area__dsk__ic_av,,,isthmus cingulate,Isthmus cingulate,isthmuscingulate
+mr_y_smri__area__dsk__ins_av,,,insula,Insula,insula
+mr_y_smri__area__dsk__iprt_av,,,inferior parietal,Inferior parietal,inferiorparietal
+mr_y_smri__area__dsk__itmp_av,,,inferior temporal,Inferior temporal,inferiortemporal
+mr_y_smri__area__dsk__lg_av,,,lingual,Lingual,lingual
+mr_y_smri__area__dsk__lobfrt_av,,,lateral orbitofrontal,Lateral orbitofrontal,lateralorbitofrontal
+mr_y_smri__area__dsk__locc_av,,,lateral occipital,Lateral occipital,lateraloccipital
+mr_y_smri__area__dsk__mobfrt_av,,,medial orbitofrontal,Medial orbitofrontal,medialorbitofrontal
+mr_y_smri__area__dsk__mtmp_av,,,middle temporal,Middle temporal,middletemporal
+mr_y_smri__area__dsk__pactr_av,,,paracentral,Paracentral,paracentral
+mr_y_smri__area__dsk__pcc_av,,,pericalcarine,Pericalcarine,pericalcarine
+mr_y_smri__area__dsk__pcg_av,,,posterior cingulate,Posterior cingulate,posteriorcingulate
+mr_y_smri__area__dsk__pfrt_av,,,frontal pole,Frontal pole,frontalpole
+mr_y_smri__area__dsk__ph_av,,,parahippocampal,Parahippocampal,parahippocampal
+mr_y_smri__area__dsk__pob_av,,,pars orbitalis,Pars orbitalis,parsorbitalis
+mr_y_smri__area__dsk__poctr_av,,,postcentral,Postcentral,postcentral
+mr_y_smri__area__dsk__pop_av,,,pars opercularis,Pars opercularis,parsopercularis
+mr_y_smri__area__dsk__prcn_av,,,precuneus,Precuneus,precuneus
+mr_y_smri__area__dsk__prctr_av,,,precentral,Precentral,precentral
+mr_y_smri__area__dsk__ptg_av,,,pars triangularis,Pars triangularis,parstriangularis
+mr_y_smri__area__dsk__ptmp_av,,,temporal pole,Temporal pole,temporalpole
+mr_y_smri__area__dsk__rac_av,,,rostral anterior cingulate,Rostral anterior cingulate,rostralanteriorcingulate
+mr_y_smri__area__dsk__rmfrt_av,,,rostral middle frontal,Rostral middle frontal,rostralmiddlefrontal
+mr_y_smri__area__dsk__sfrt_av,,,superior frontal,Superior frontal,superiorfrontal
+mr_y_smri__area__dsk__sm_av,,,supramarginal,Supramarginal,supramarginal
+mr_y_smri__area__dsk__sprt_av,,,superior parietal,Superior parietal,superiorparietal
+mr_y_smri__area__dsk__stmp_av,,,superior temporal,Superior temporal,superiortemporal
+mr_y_smri__area__dsk__ttmp_av,,,transverse temporal,Transverse temporal,transversetemporal
+mr_y_smri__vol__dsk__bstmps_av,,,banks of superior temporal sulcus,Banks of superior temporal sulcus,bankssts
+mr_y_smri__vol__dsk__cac_av,,,caudal anterior cingulate,Caudal anterior cingulate,caudalanteriorcingulate
+mr_y_smri__vol__dsk__cmfrt_av,,,caudal middle frontal,Caudal middle frontal,caudalmiddlefrontal
+mr_y_smri__vol__dsk__cn_av,,,cuneus,Cuneus,cuneus
+mr_y_smri__vol__dsk__er_av,,,entorhinal,Entorhinal,entorhinal
+mr_y_smri__vol__dsk__ff_av,,,fusiform,Fusiform,fusiform
+mr_y_smri__vol__dsk__ic_av,,,isthmus cingulate,Isthmus cingulate,isthmuscingulate
+mr_y_smri__vol__dsk__ins_av,,,insula,Insula,insula
+mr_y_smri__vol__dsk__iprt_av,,,inferior parietal,Inferior parietal,inferiorparietal
+mr_y_smri__vol__dsk__itmp_av,,,inferior temporal,Inferior temporal,inferiortemporal
+mr_y_smri__vol__dsk__lg_av,,,lingual,Lingual,lingual
+mr_y_smri__vol__dsk__lobfrt_av,,,lateral orbitofrontal,Lateral orbitofrontal,lateralorbitofrontal
+mr_y_smri__vol__dsk__locc_av,,,lateral occipital,Lateral occipital,lateraloccipital
+mr_y_smri__vol__dsk__mobfrt_av,,,medial orbitofrontal,Medial orbitofrontal,medialorbitofrontal
+mr_y_smri__vol__dsk__mtmp_av,,,middle temporal,Middle temporal,middletemporal
+mr_y_smri__vol__dsk__pactr_av,,,paracentral,Paracentral,paracentral
+mr_y_smri__vol__dsk__pcc_av,,,pericalcarine,Pericalcarine,pericalcarine
+mr_y_smri__vol__dsk__pcg_av,,,posterior cingulate,Posterior cingulate,posteriorcingulate
+mr_y_smri__vol__dsk__pfrt_av,,,frontal pole,Frontal pole,frontalpole
+mr_y_smri__vol__dsk__ph_av,,,parahippocampal,Parahippocampal,parahippocampal
+mr_y_smri__vol__dsk__pob_av,,,pars orbitalis,Pars orbitalis,parsorbitalis
+mr_y_smri__vol__dsk__poctr_av,,,postcentral,Postcentral,postcentral
+mr_y_smri__vol__dsk__pop_av,,,pars opercularis,Pars opercularis,parsopercularis
+mr_y_smri__vol__dsk__prcn_av,,,precuneus,Precuneus,precuneus
+mr_y_smri__vol__dsk__prctr_av,,,precentral,Precentral,precentral
+mr_y_smri__vol__dsk__ptg_av,,,pars triangularis,Pars triangularis,parstriangularis
+mr_y_smri__vol__dsk__ptmp_av,,,temporal pole,Temporal pole,temporalpole
+mr_y_smri__vol__dsk__rac_av,,,rostral anterior cingulate,Rostral anterior cingulate,rostralanteriorcingulate
+mr_y_smri__vol__dsk__rmfrt_av,,,rostral middle frontal,Rostral middle frontal,rostralmiddlefrontal
+mr_y_smri__vol__dsk__sfrt_av,,,superior frontal,Superior frontal,superiorfrontal
+mr_y_smri__vol__dsk__sm_av,,,supramarginal,Supramarginal,supramarginal
+mr_y_smri__vol__dsk__sprt_av,,,superior parietal,Superior parietal,superiorparietal
+mr_y_smri__vol__dsk__stmp_av,,,superior temporal,Superior temporal,superiortemporal
+mr_y_smri__vol__dsk__ttmp_av,,,transverse temporal,Transverse temporal,transversetemporal
+mr_y_smri__thk__dsk__bstmps_av,,,banks of superior temporal sulcus,Banks of superior temporal sulcus,bankssts
+mr_y_smri__thk__dsk__cac_av,,,caudal anterior cingulate,Caudal anterior cingulate,caudalanteriorcingulate
+mr_y_smri__thk__dsk__cmfrt_av,,,caudal middle frontal,Caudal middle frontal,caudalmiddlefrontal
+mr_y_smri__thk__dsk__cn_av,,,cuneus,Cuneus,cuneus
+mr_y_smri__thk__dsk__er_av,,,entorhinal,Entorhinal,entorhinal
+mr_y_smri__thk__dsk__ff_av,,,fusiform,Fusiform,fusiform
+mr_y_smri__thk__dsk__ic_av,,,isthmus cingulate,Isthmus cingulate,isthmuscingulate
+mr_y_smri__thk__dsk__ins_av,,,insula,Insula,insula
+mr_y_smri__thk__dsk__iprt_av,,,inferior parietal,Inferior parietal,inferiorparietal
+mr_y_smri__thk__dsk__itmp_av,,,inferior temporal,Inferior temporal,inferiortemporal
+mr_y_smri__thk__dsk__lg_av,,,lingual,Lingual,lingual
+mr_y_smri__thk__dsk__lobfrt_av,,,lateral orbitofrontal,Lateral orbitofrontal,lateralorbitofrontal
+mr_y_smri__thk__dsk__locc_av,,,lateral occipital,Lateral occipital,lateraloccipital
+mr_y_smri__thk__dsk__mobfrt_av,,,medial orbitofrontal,Medial orbitofrontal,medialorbitofrontal
+mr_y_smri__thk__dsk__mtmp_av,,,middle temporal,Middle temporal,middletemporal
+mr_y_smri__thk__dsk__pactr_av,,,paracentral,Paracentral,paracentral
+mr_y_smri__thk__dsk__pcc_av,,,pericalcarine,Pericalcarine,pericalcarine
+mr_y_smri__thk__dsk__pcg_av,,,posterior cingulate,Posterior cingulate,posteriorcingulate
+mr_y_smri__thk__dsk__pfrt_av,,,frontal pole,Frontal pole,frontalpole
+mr_y_smri__thk__dsk__ph_av,,,parahippocampal,Parahippocampal,parahippocampal
+mr_y_smri__thk__dsk__pob_av,,,pars orbitalis,Pars orbitalis,parsorbitalis
+mr_y_smri__thk__dsk__poctr_av,,,postcentral,Postcentral,postcentral
+mr_y_smri__thk__dsk__pop_av,,,pars opercularis,Pars opercularis,parsopercularis
+mr_y_smri__thk__dsk__prcn_av,,,precuneus,Precuneus,precuneus
+mr_y_smri__thk__dsk__prctr_av,,,precentral,Precentral,precentral
+mr_y_smri__thk__dsk__ptg_av,,,pars triangularis,Pars triangularis,parstriangularis
+mr_y_smri__thk__dsk__ptmp_av,,,temporal pole,Temporal pole,temporalpole
+mr_y_smri__thk__dsk__rac_av,,,rostral anterior cingulate,Rostral anterior cingulate,rostralanteriorcingulate
+mr_y_smri__thk__dsk__rmfrt_av,,,rostral middle frontal,Rostral middle frontal,rostralmiddlefrontal
+mr_y_smri__thk__dsk__sfrt_av,,,superior frontal,Superior frontal,superiorfrontal
+mr_y_smri__thk__dsk__sm_av,,,supramarginal,Supramarginal,supramarginal
+mr_y_smri__thk__dsk__sprt_av,,,superior parietal,Superior parietal,superiorparietal
+mr_y_smri__thk__dsk__stmp_av,,,superior temporal,Superior temporal,superiortemporal
+mr_y_smri__thk__dsk__ttmp_av,,,transverse temporal,Transverse temporal,transversetemporal

@@ -1,0 +1,647 @@
+
+---
+title: "Data preparation - Brain structural development mediates links between socioeconomic disadvantage and cognitive outcomes beyond polygenic influences"
+author: "Phoebe Thomson"
+date: "`r format(Sys.time(), '%d/%m/%Y')`"
+output:
+  html_document:
+    fig_width: 10
+    fig_height: 8
+    fig_caption: yes
+    keep_md: no
+    number_sections: no
+    toc: yes
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r setup, include=FALSE}
+
+# Set knit options 
+knitr::opts_chunk$set(echo = FALSE, include = TRUE, warning = FALSE, error = TRUE, message = FALSE, strip.white = TRUE, results = "markup")
+
+# Set file directories
+source_data_path <- "/path/release7/"
+genetics_data_path <- "/path/polygenic_scores/"
+geneanc_data_path <- "/path/polygenic_scores/Ancestry_information/"
+output_data_path <- "/path/ses_gm_cog/"
+  
+# Load libraries
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stats)
+
+```
+
+# Load ABCD release data {.hidden}
+```{r}
+
+setwd(source_data_path)
+age <- data.frame(fread("ab_g_dyn.tsv"))
+adi <- data.frame(fread("le_l_adi.tsv", sep="\t"))
+demographics <- data.frame(fread("ab_p_demo.tsv", sep = "\t"))
+imaging_area <- data.frame(fread("mr_y_smri__area__dsk.tsv", sep = "\t"))
+imaging_sulc <- data.frame(fread("mr_y_smri__sulc__dsk.tsv", sep = "\t"))
+imaging_thk <- data.frame(fread("mr_y_smri__thk__dsk.tsv", sep = "\t"))
+imaging_vol <- data.frame(fread("mr_y_smri__vol__dsk.tsv", sep = "\t"))
+imaging_aseg <- data.frame(fread("mr_y_smri__vol__aseg.tsv", sep = "\t"))
+imaging_inclusion <- data.frame(fread("mr_y_qc__incl.tsv", sep = "\t"))
+cognition <- data.frame(fread("nc_y_nihtb.tsv", sep = "\t"))
+grades_y <- data.frame(fread("fc_y_sag.tsv", sep = "\t"))
+grades_p <- data.frame(fread("fc_p_sag.tsv", sep = "\t"))
+sex_genes <- data.frame(fread("ab_g_stc.tsv", sep = "\t"))
+scanner <- data.frame(fread("mr_y_adm__info.tsv", sep = "\t"))
+motion <- data.frame(fread("mr_y_qc__mot.tsv", sep="\t"))
+adi <- data.frame(fread("le_l_adi.tsv", sep="\t"))
+
+# Load genetics polygenic score (pgs) data
+genes_pgs_vol <- read.table(paste0(genetics_data_path,"plink_ADNI_TBV_2019.txt.sscore"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id",	"IID",	"ALLELE_CT_PGSvol",	"NAMED_ALLELE_DOSAGE_SUM_PGSvol", "SCORE1_AVG_PGSvol"))
+genes_pgs_iq <- read.table(paste0(genetics_data_path,"plink_CTG_Intelligence_2018_EUR.txt.sscore"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id",	"IID",	"ALLELE_CT_PGSiq",	"NAMED_ALLELE_DOSAGE_SUM_PGSiq", "SCORE1_AVG_PGSiq"))
+
+# Load genetic ancestry data
+genes_ancestry <- read.table(paste0(geneanc_data_path,"eur.txt"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id"))
+## Load all ancestries 
+genes_ancestry_eur <- read.table(paste0(geneanc_data_path,"eur.txt"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id"))
+genes_ancestry_afr <- read.table(paste0(geneanc_data_path,"afr.txt"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id"))
+genes_ancestry_eas <- read.table(paste0(geneanc_data_path,"eas.txt"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id"))
+genes_ancestry_mix <- read.table(paste0(geneanc_data_path,"mix.txt"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id"))
+genes_ancestry_nam <- read.table(paste0(geneanc_data_path,"nam.txt"), header = FALSE, sep = "\t", stringsAsFactors = FALSE, col.names = c("participant_id"))
+
+```
+
+# Ensure variables are correctly formatted {.hidden}
+```{r}
+# Ensure variables are correctly formatted
+
+# First, we ensure brain measures are numeric (this is more srtaightforward before merging)
+  # Columns to keep as non-numeric
+exclude_cols <- c("participant_id", "session_id")
+  # Function to convert all columns apart from excluded to numeric
+convert_to_numeric <- function(df) {
+  cols_to_convert <- setdiff(names(df), exclude_cols)
+  df[cols_to_convert] <- lapply(df[cols_to_convert], function(x) as.numeric(as.character(x)))
+  df
+}
+  # Apply to each imaging dataframe 
+imaging_area <- convert_to_numeric(imaging_area)
+imaging_sulc <- convert_to_numeric(imaging_sulc)
+imaging_thk <- convert_to_numeric(imaging_thk)
+imaging_vol <- convert_to_numeric(imaging_vol)
+imaging_aseg <- convert_to_numeric(imaging_aseg)
+motion <- convert_to_numeric(motion)
+cognition <- convert_to_numeric(cognition)
+
+# Second, we ensure age and ADI are numeric 
+age$ab_g_dyn__visit_age <- as.numeric(age$ab_g_dyn__visit_age)
+adi$le_l_adi__addr1__national_prcnt <- as.numeric(adi$le_l_adi__addr1__national_prcnt)
+
+# Third, we ensure that any grades or demogrpahics values that are 444=na, 777=decline to answer or 999=don't know are coded as NA
+grades_y <- grades_y %>%
+  mutate(across(
+    matches("^fc_y_sag_00[0-9]$"),
+    ~ ifelse(.x == 444 | .x == "444" | .x == 777 | .x == "777" | .x == 999 | .x == "999", NA, .x)
+  ))
+grades_p <- grades_p %>%
+  mutate(across(
+    matches("^fc_p_sag_00[0-9]$"),
+    ~ ifelse(.x == 444 | .x == "444" | .x == 777 | .x == "777" | .x == 999 | .x == "999", NA, .x)
+  ))
+demographics <- demographics %>%
+  mutate(across(
+    5:ncol(demographics),
+    ~ ifelse(.x == 444 | .x == "444" | .x == 777 | .x == "777" | .x == 999 | .x == "999", NA, .x)
+  ))
+
+# Fourth, reverse code the grades variable
+grades_y$fc_y_sag_005 <- 13 - as.numeric(grades_y$fc_y_sag_005)
+grades_p$fc_p_sag_005 <- 13 - as.numeric(grades_p$fc_p_sag_005)
+
+# Fifth, ensure sex is categorical 
+sex_genes$Sex <- as.factor(sex_genes$ab_g_stc__cohort_sex)
+
+# Sixth, ensure genetics data match ABCD release format for merging
+genes_pgs_vol$participant_id <- gsub("NDAR_INV", "sub-", genes_pgs_vol$participant_id) # correct ID format
+genes_pgs_iq$participant_id <- gsub("NDAR_INV", "sub-", genes_pgs_iq$participant_id) # correct ID format
+genes_ancestry$participant_id <- gsub("NDAR_INV", "sub-", genes_ancestry$participant_id) # correct ID format
+genes_ancestry$eur_ancestry <- 1 # add column indicating that these participants were of european ancestry
+## Get other ancestries ready
+genes_ancestry_eur$Ancestry <- "European"
+genes_ancestry_afr$Ancestry <- "African"
+genes_ancestry_eas$Ancestry <- "East Asian"
+genes_ancestry_mix$Ancestry <- "Admixed"
+genes_ancestry_nam$Ancestry <- "North and South American"
+## Merge the data
+ancestry <- rbind(genes_ancestry_eur, genes_ancestry_afr, genes_ancestry_eas, 
+                  genes_ancestry_mix, genes_ancestry_nam)
+ancestry$participant_id <- gsub("NDAR_INV", "sub-", ancestry$participant_id)
+genes_pgs_vol$session_id <- "ses-00A" # add session column for merging
+genes_pgs_iq$session_id <- "ses-00A" # add session column for merging
+genes_ancestry$session_id <- "ses-00A" # add session column for merging
+ancestry$session_id <- "ses-00A" # add session column for merging
+
+exclude_cols <- colnames(sex_genes)[1:18] # ensure PCs of genetic ancestry are numeric
+sex_genes <- convert_to_numeric(sex_genes) # ensure PCs of genetic ancestry are numeric
+sex_genes$session_id <- "ses-00A" # add session column for merging
+
+# Seventh, ensure that all "n/a" for scanner model are labelled as NA, and create dummy coded variables for scanner
+age$ab_g_dyn__design_mr__model <- gsub(" ", "", age$ab_g_dyn__design_mr__model)
+age$ab_g_dyn__design_mr__model <- factor(ifelse(age$ab_g_dyn__design_mr__model == "n/a", NA, age$ab_g_dyn__design_mr__model))
+dummy_factor <- function(df, factor_var, ref = NULL) {
+  f <- df[[factor_var]]
+  if (!is.factor(f)) stop(factor_var, " must be a factor")
+  lvls <- levels(f)
+  if (!is.null(ref)) lvls <- setdiff(lvls, ref)
+  else lvls <- lvls[-1]  # default reference = first level
+  for (lvl in lvls) {
+    dummy_name <- paste0("mri", "_", lvl)
+    df[[dummy_name]] <- ifelse(f == lvl, 1, 0)
+  }
+  df
+}
+age <- dummy_factor(age, "ab_g_dyn__design_mr__model", ref = "Prisma") # Prepare the dummy coded scanner model variables for this analysis
+
+```
+
+# Merge the data and convert to wide format {.hidden}
+```{r}
+
+# Merge the dataframes
+merged_df <- age %>%
+  left_join(demographics, by = c("participant_id","session_id"))%>%
+  left_join(imaging_inclusion, by = c("participant_id","session_id")) %>%
+  left_join(grades_y, by = c("participant_id","session_id")) %>%
+  left_join(grades_p, by = c("participant_id","session_id")) %>%
+  left_join(imaging_area, by = c("participant_id","session_id")) %>%
+  left_join(imaging_sulc, by = c("participant_id","session_id")) %>%
+  left_join(imaging_thk, by = c("participant_id","session_id")) %>%
+  left_join(imaging_vol, by = c("participant_id","session_id")) %>%
+  left_join(cognition, by = c("participant_id","session_id")) %>%
+  left_join(sex_genes, by = c("participant_id", "session_id")) %>%
+  left_join(scanner, by = c("participant_id","session_id")) %>%
+  left_join(motion, by = c("participant_id", "session_id")) %>%
+  left_join(imaging_aseg, by = c("participant_id", "session_id"))  %>%
+  left_join(adi, by = c("participant_id", "session_id"))  %>%
+  left_join(genes_pgs_vol, by = c("participant_id", "session_id")) %>%
+  left_join(genes_pgs_iq, by = c("participant_id","session_id")) %>%
+  left_join(genes_ancestry, by = c("participant_id", "session_id")) %>%
+  left_join(ancestry, by = c("participant_id", "session_id"))
+
+# Remove original datasets from environment
+rm(demographics, imaging_inclusion, age, imaging_area, imaging_sulc,
+   imaging_thk, imaging_vol, cognition, grades_y, grades_p,
+   sex_genes, scanner, motion, imaging_aseg, adi, genes_pgs_vol, genes_pgs_iq, genes_ancestry)
+
+# Pivot to wide format
+df_wide <- pivot_wider(
+  merged_df,
+  id_cols    = participant_id,
+  names_from = session_id,
+  values_from = -c(participant_id, session_id)
+)
+
+```
+
+Now we calculate the SES variables
+
+# Prepare the variables 
+### SES: Create household and neighborhood SES variables
+```{r}
+
+# First, calculate the income to needs ratio (INR)
+## Change any "I don't know/777" or "Refused to Answer/999" in household income to NA
+df_wide$`ab_p_demo__income__hhold_001_ses-00A`[df_wide$`ab_p_demo__income__hhold_001_ses-00A` == 777] <- NA
+df_wide$`ab_p_demo__income__hhold_001_ses-00A`[df_wide$`ab_p_demo__income__hhold_001_ses-00A` == 999] <- NA
+## Assign each income category with the average in the band (except the first and last which receives the top threshold value)
+key <- c("1" = 5000, "2" = 8499.5, "3" = 13999.5, "4" = 20499.5,
+         "5" = 29999.5, "6" = 29999.5, "7" = 62499.5, "8" = 87499.5,
+         "9" = 149999.5, "10" = 200000)
+# Create a new column by looking up the value in the key_map based on key_col
+df_wide$ab_p_demo__income__hhold_001_avg <- key[as.character(df_wide$`ab_p_demo__income__hhold_001_ses-00A`)]
+df_wide$`ab_p_demo__roster_001_ses-00A` <- as.numeric(df_wide$`ab_p_demo__roster_001_ses-00A`)
+## Change any instances of 0-1 people living in the household to NA 
+df_wide$`ab_p_demo__roster_001_ses-00A`[df_wide$`ab_p_demo__roster_001_ses-00A` == 0] <- NA
+df_wide$`ab_p_demo__roster_001_ses-00A`[df_wide$`ab_p_demo__roster_001_ses-00A` == 1] <- NA
+## Load the 2017 Federal Poverty Guidelines (Department of Health and Human Services, 2017)
+poverty_guidelines_2017 <- data.frame(
+  no_in_household = c(seq(1,8)),
+  poverty_guideline = c(12060, 16240, 20420, 24600, 28780, 32960, 37140, 41320))
+# Divide the household income for each person by the relevant poverty guideline for their household size
+df_wide$baseline_inr <- ifelse(df_wide$`ab_p_demo__roster_001_ses-00A`<9, df_wide$ab_p_demo__income__hhold_001_avg/ poverty_guidelines_2017$poverty_guideline[match(df_wide$`ab_p_demo__roster_001_ses-00A`, poverty_guidelines_2017$no_in_household)],df_wide$ab_p_demo__income__hhold_001_avg/ (poverty_guidelines_2017$poverty_guideline[match(8, poverty_guidelines_2017$no_in_household)]+((df_wide$`ab_p_demo__roster_001_ses-00A`-8)*4180)))
+
+# Second, calculate the parent education 
+# Convert values from categories to years 
+df_wide <- df_wide %>%
+    mutate(
+        ab_p_demo__edu__slf_001 = case_when(
+            `ab_p_demo__edu__slf_001_ses-00A` %in% c("0","1","2","3","4","5","6","7","8","9","10","11") ~ as.numeric(`ab_p_demo__edu__slf_001_ses-00A`),
+            `ab_p_demo__edu__slf_001_ses-00A` %in% c("13","14") ~ 12,
+            `ab_p_demo__edu__slf_001_ses-00A` %in% c("15","16","17") ~ 14,
+            `ab_p_demo__edu__slf_001_ses-00A` == "18" ~ 16,
+            `ab_p_demo__edu__slf_001_ses-00A` == "19" ~ 18,
+            `ab_p_demo__edu__slf_001_ses-00A` == "20" ~ 20,
+            `ab_p_demo__edu__slf_001_ses-00A` == "21" ~ 22,
+            TRUE ~ NA_real_
+        )
+    )
+df_wide <- df_wide %>%
+    mutate(
+        ab_p_demo__edu__prtnr_001 = case_when(
+            `ab_p_demo__edu__prtnr_001_ses-00A` %in% c("0","1","2","3","4","5","6","7","8","9","10","11") ~ as.numeric(`ab_p_demo__edu__prtnr_001_ses-00A`),
+            `ab_p_demo__edu__prtnr_001_ses-00A` %in% c("13","14") ~ 12,
+            `ab_p_demo__edu__prtnr_001_ses-00A` %in% c("15","16","17") ~ 14,
+            `ab_p_demo__edu__prtnr_001_ses-00A` == "18" ~ 16,
+            `ab_p_demo__edu__prtnr_001_ses-00A` == "19" ~ 18,
+            `ab_p_demo__edu__prtnr_001_ses-00A` == "20" ~ 20,
+            `ab_p_demo__edu__prtnr_001_ses-00A` == "21" ~ 22,
+            TRUE ~ NA_real_
+        )
+    )
+df_wide$baseline_prnt_edu_years_avg =
+    rowMeans(cbind(df_wide$ab_p_demo__edu__slf_001,
+                   df_wide$ab_p_demo__edu__prtnr_001), na.rm = T)
+                    
+# Third, conduct a PCA on INR and parent education to get one household SES variable
+# Take the relevant columns for the PCA
+data_ses <- df_wide[,c("participant_id", "baseline_inr", "baseline_prnt_edu_years_avg")]
+# Standardize the relevant columns
+data_ses$INR_z <- scale(data_ses$baseline_inr)
+data_ses$prnt_edu_years_avg_z <- scale(data_ses$baseline_prnt_edu_years_avg)
+# Keep only non-missing SES values
+df_pca <- na.omit(data_ses)
+# Run the PCA
+pca <- prcomp(df_pca[,c("INR_z", "prnt_edu_years_avg_z")], scale. = TRUE)
+# Inspect the output 
+summary(pca) # see the total variance explained, hopefully is around .8+
+# Retrieve the values for PC1 and assign it as composite household SES
+pc1_df <- data.frame(
+  participant_id  = df_pca$participant_id,
+  SES_household_composite = pca$x[, "PC1"]
+)
+# Merge PC back with SES frame
+data_ses <- merge(data_ses, pc1_df, by = "participant_id", all.x = TRUE)
+# Merge PC back with overall data frame 
+df_wide <- left_join(df_wide, data_ses, by = "participant_id")
+
+# Fourth, retrieve ADI values and reverse code to get the neighbourhood SES variable
+df_wide$`le_l_adi__addr1__national_prcnt_ses-00A` <- as.numeric(df_wide$`le_l_adi__addr1__national_prcnt_ses-00A`)
+df_wide$SES_neighbourhood <- 101 - df_wide$`le_l_adi__addr1__national_prcnt_ses-00A`
+
+# Fifth, check that the sign is in the correct direction (higher PC = higher household SES as sometimes can get flipped)
+if (as.numeric(cor.test(df_wide$SES_household_composite, df_wide$INR_z)$estimate) < 0) {
+  df_wide$SES_household <- (-1)*(df_wide$SES_household_composite)
+} else { df_wide$SES_household <-  df_wide$SES_household_composite }
+ # flip if needed and recheck (note: the correlation will be equal for both measures since only 2 variables in the PCA)
+
+# Finally, create a variable tracking participants with at least on SES variable at baseline
+df_wide$SES_00A_any <- ifelse(!is.na(df_wide$SES_neighbourhood) | !is.na(df_wide$SES_household), 1, 0)
+
+```
+
+### Brain: Create sMRI inclusion column {.hidden}
+```{r}
+
+# Make a variable indicating whether a person had any scans 
+df_wide$mr_y_qc__incl__smri__t1_anypresent <- ifelse(rowSums(!is.na(df_wide[, startsWith(names(df_wide), "mr_y_qc__incl__smri__t1_indicator")])) == 0, 0, 1)
+
+# Make a variable indicating how many sMRI scans passed DAIRC QC
+df_wide$mr_y_qc__incl__smri__t1_passingcount <- rowSums(df_wide[, startsWith(names(df_wide), "mr_y_qc__incl__smri__t1_indicator")], na.rm = TRUE)
+
+# Make a variable indicating whether any scans passed DAIRC QC for each participant
+df_wide$mr_y_qc__incl__smri__t1_anypassing <- ifelse(df_wide$mr_y_qc__incl__smri__t1_passingcount > 0, 1, 0)
+
+
+# Repeat for year 0, 2 and 4 only for sensitivity analyses
+# Make a variable indicating whether a person had any scans 
+df_wide$mr_y_qc__incl__smri__t1_anypresent_to04A <- ifelse(rowSums(!is.na(df_wide[,
+c("mr_y_qc__incl__smri__t1_indicator_ses-00A",  
+"mr_y_qc__incl__smri__t1_indicator_ses-02A", 
+"mr_y_qc__incl__smri__t1_indicator_ses-04A")])) == 0, 0, 1)
+
+# Make a variable indicating how many sMRI scans passed DAIRC QC
+df_wide$mr_y_qc__incl__smri__t1_passingcount_to04A <- rowSums(df_wide[, c("mr_y_qc__incl__smri__t1_indicator_ses-00A",  
+"mr_y_qc__incl__smri__t1_indicator_ses-02A", 
+"mr_y_qc__incl__smri__t1_indicator_ses-04A")], na.rm = TRUE)
+
+# Make a variable indicating whether any scans passed DAIRC QC for each participant
+df_wide$mr_y_qc__incl__smri__t1_anypassing_to04A <- ifelse(df_wide$mr_y_qc__incl__smri__t1_passingcount_to04A > 0, 1, 0)
+
+# Set brain values to NA for scans that do not pass QC
+suffixes <- c("00A", "02A", "04A", "06A")
+prefixes <- c("mr_y_smri__area__dsk_", "mr_y_smri__thk__dsk_", "mr_y_smri__vol__dsk")
+df_wide_og <- df_wide
+for (session in suffixes) {
+  include_col <- paste0("mr_y_qc__incl__smri__t1_indicator_ses-", session)
+  pattern <- paste0("^(", paste(prefixes, collapse = "|"), ")_.*-", session, "$")
+  target_cols <- grep(pattern, names(df_wide), value = TRUE)
+  rows_to_na <- df_wide[[include_col]] == 0 | is.na(df_wide[[include_col]])
+  df_wide[rows_to_na, target_cols] <- NA
+}
+
+```
+
+### Outcomes: Create cognition/grades inclusion column {.hidden}
+```{r}
+
+# Create crystallized average score
+df_wide$`Crystallized_Calc_ses-04A` <- (as.numeric(df_wide$`nc_y_nihtb__picvcb__uncor_score_ses-04A`) + 
+                                  as.numeric(df_wide$`nc_y_nihtb__readr__uncor_score_ses-04A`))/2
+
+df_wide$`Crystallized_Calc_ses-06A` <- (as.numeric(df_wide$`nc_y_nihtb__picvcb__uncor_score_ses-06A`) + 
+  as.numeric(df_wide$`nc_y_nihtb__readr__uncor_score_ses-06A`))/2
+
+#### Make column for main analysis ####
+# List cognitive and grades variables 
+outcomes_06A <- c("fc_p_sag_005_ses-06A", 
+              "Crystallized_Calc_ses-06A",
+              "nc_y_nihtb__flnkr__uncor_score_ses-06A",
+              "nc_y_nihtb__crdst__uncor_score_ses-06A",
+              "nc_y_nihtb__pttcp__uncor_score_ses-06A")
+# Make a column indicating if any outcomes are available at 6-year follow up
+df_wide$outcomes_06A_any <- ifelse(rowSums(df_wide[, outcomes_06A], na.rm = TRUE) > 0, 1, 0)
+
+#### Make column for sensitivity analysis ####
+# Repeat for 4-year follow-up for sensitivity analysis
+# List cognitive and grades variables 
+outcomes_04A <- c("fc_p_sag_005_ses-04A", 
+              "Crystallized_Calc_ses-04A",
+              "nc_y_nihtb__flnkr__uncor_score_ses-04A",
+              "nc_y_nihtb__crdst__uncor_score_ses-04A",
+              "nc_y_nihtb__pttcp__uncor_score_ses-04A")
+# Make a column indicating if any outcomes are available at 4-year follow up
+df_wide$outcomes_04A_any <- ifelse(rowSums(df_wide[, outcomes_04A], na.rm = TRUE) > 0, 1, 0)
+
+```
+
+### Genetics: Create genetics sensitivity analysis inclusion column {.hidden}
+```{r}
+
+# Prepare an inclusion column for the genetics analysis (genetics data available for total brain volume, general cognitive ability, and European ancestry according to genetic PCs) 
+df_wide$genetics_and_euranc <- ifelse(df_wide$`eur_ancestry_ses-00A` == 1 & 
+                                        !is.na(df_wide$`SCORE1_AVG_PGSvol_ses-00A`) & 
+                                        !is.na(df_wide$`SCORE1_AVG_PGSiq_ses-00A`) & 
+                                        !is.na(df_wide$`ab_g_stc__gen_pc__01_ses-00A`), 1, 0)
+
+df_wide$genetics_available <- ifelse(!is.na(df_wide$`SCORE1_AVG_PGSvol_ses-00A`) & 
+                                        !is.na(df_wide$`SCORE1_AVG_PGSiq_ses-00A`) & 
+                                        !is.na(df_wide$`ab_g_stc__gen_pc__01_ses-00A`), 1, 0)
+
+
+# Create residualised PGS scores
+## Cognitive PGS
+resid_model <- lm(`SCORE1_AVG_PGSiq_ses-00A` ~ 
+                    `ab_g_stc__gen_pc__01_ses-00A` + `ab_g_stc__gen_pc__02_ses-00A` + 
+                    `ab_g_stc__gen_pc__03_ses-00A` + `ab_g_stc__gen_pc__04_ses-00A` + 
+                    `ab_g_stc__gen_pc__05_ses-00A` + `ab_g_stc__gen_pc__06_ses-00A` + 
+                    `ab_g_stc__gen_pc__07_ses-00A` + `ab_g_stc__gen_pc__08_ses-00A` + 
+                    `ab_g_stc__gen_pc__09_ses-00A` + `ab_g_stc__gen_pc__10_ses-00A`, 
+                  data = df_wide)
+df_wide$`SCORE1_AVG_PGSiq_resid_ses-00A` <- NA_real_
+df_wide$`SCORE1_AVG_PGSiq_resid_ses-00A`[as.integer(names(residuals(resid_model)))] <- residuals(resid_model)
+
+## Brain Volume PGS
+resid_model <- lm(`SCORE1_AVG_PGSvol_ses-00A` ~ 
+                    `ab_g_stc__gen_pc__01_ses-00A` + `ab_g_stc__gen_pc__02_ses-00A` + 
+                    `ab_g_stc__gen_pc__03_ses-00A` + `ab_g_stc__gen_pc__04_ses-00A` + 
+                    `ab_g_stc__gen_pc__05_ses-00A` + `ab_g_stc__gen_pc__06_ses-00A` + 
+                    `ab_g_stc__gen_pc__07_ses-00A` + `ab_g_stc__gen_pc__08_ses-00A` + 
+                    `ab_g_stc__gen_pc__09_ses-00A` + `ab_g_stc__gen_pc__10_ses-00A`, 
+                  data = df_wide)
+df_wide$`SCORE1_AVG_PGSvol_resid_ses-00A` <- NA_real_
+df_wide$`SCORE1_AVG_PGSvol_resid_ses-00A`[as.integer(names(residuals(resid_model)))] <- residuals(resid_model)
+
+
+```
+
+### Inspect and save histograms of key variables
+```{r}
+
+# Note: we do not include the PGS in these histograms as this is the full sample and they will therefore appear skewed until we restrict to the european ancestry group
+
+cols <- c("ab_g_dyn__visit_age_ses-00A", 
+          "ab_g_dyn__visit_age_ses-02A", 
+          "ab_g_dyn__visit_age_ses-04A", 
+          "ab_g_dyn__visit_age_ses-06A", 
+          "fc_p_sag_005_ses-06A", 
+          "SES_household", 
+          "SES_neighbourhood",
+          "Crystallized_Calc_ses-06A",
+          "nc_y_nihtb__flnkr__uncor_score_ses-06A",
+          "nc_y_nihtb__crdst__uncor_score_ses-06A",
+          "nc_y_nihtb__pttcp__uncor_score_ses-06A",
+          "mr_y_smri__thk__dsk_mean_ses-00A",
+          "mr_y_smri__thk__dsk_mean_ses-02A",
+          "mr_y_smri__thk__dsk_mean_ses-04A",
+          "mr_y_smri__thk__dsk_mean_ses-06A",
+          "mr_y_smri__area__dsk_sum_ses-00A",
+          "mr_y_smri__area__dsk_sum_ses-02A",
+          "mr_y_smri__area__dsk_sum_ses-04A",
+          "mr_y_smri__area__dsk_sum_ses-06A",
+          "mr_y_smri__vol__dsk_sum_ses-00A",
+          "mr_y_smri__vol__dsk_sum_ses-02A",
+          "mr_y_smri__vol__dsk_sum_ses-04A",
+          "mr_y_smri__vol__dsk_sum_ses-06A")
+
+col_titles <- c("ab_g_dyn__visit_age_ses-00A", 
+          "ab_g_dyn__visit_age_ses-02A", 
+          "ab_g_dyn__visit_age_ses-04A", 
+          "ab_g_dyn__visit_age_ses-06A", 
+          "fc_p_sag_005_ses-06A", 
+          "SES_household", 
+          "SES_neighbourhood",
+          "Crystallized_Calc_ses-06A",
+          "nc_y_nihtb__flnkr__uncor_score_ses-06A",
+          "nc_y_nihtb__crdst__uncor_score_ses-06A",
+          "nc_y_nihtb__pttcp__uncor_score_ses-06A",
+          "mr_y_smri__thk__dsk_mean_ses-00A",
+          "mr_y_smri__thk__dsk_mean_ses-02A",
+          "mr_y_smri__thk__dsk_mean_ses-04A",
+          "mr_y_smri__thk__dsk_mean_ses-06A",
+          "mr_y_smri__area__dsk_sum_ses-00A",
+          "mr_y_smri__area__dsk_sum_ses-02A",
+          "mr_y_smri__area__dsk_sum_ses-04A",
+          "mr_y_smri__area__dsk_sum_ses-06A",
+          "mr_y_smri__vol__dsk_sum_ses-00A",
+          "mr_y_smri__vol__dsk_sum_ses-02A",
+          "mr_y_smri__vol__dsk_sum_ses-04A",
+          "mr_y_smri__vol__dsk_sum_ses-06A")
+
+df_long <- df_wide %>%
+  dplyr::select(all_of(cols)) %>%
+  tidyr::pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+p <- ggplot(df_long, aes(x = value)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black") +
+  facet_wrap(~variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Histograms by variable", x = "Value", y = "Count")
+
+ggsave(paste0(output_data_path, "variable_histograms.png"), p, width = 20, height = 10)
+
+p
+
+```
+
+### Create columns for inclusion in each analysis {.hidden}
+```{r}
+
+# Criteria: household and/or neighbourhood SES at 00A, at least 1 T1 passing at any timepoint, at least 1 cognitive/grades outcome at 06A
+df_wide$use_main <- ifelse(df_wide$SES_00A_any == 1 & df_wide$mr_y_qc__incl__smri__t1_anypassing == 1 & df_wide$outcomes_06A_any == 1, 1, 0)
+
+# main sample with genetic data
+df_wide$use_main_genes <- ifelse(df_wide$SES_00A_any == 1 & df_wide$mr_y_qc__incl__smri__t1_anypassing == 1 & df_wide$outcomes_06A_any == 1 & df_wide$genetics_available == 1, 1, 0)
+
+# european ancestry sample
+df_wide$use_european <- ifelse(df_wide$SES_00A_any == 1 & df_wide$mr_y_qc__incl__smri__t1_anypassing == 1 & df_wide$outcomes_06A_any == 1 & df_wide$`Ancestry_ses-00A` == "European", 1, 0)
+
+# Criteria: household and/or neighbourhood SES at 00A, at least 1 T1 passing at any timepoint, at least 1 cognitive/grades outcome at 06A, is of European ancestry and has genetics data
+df_wide$use_genes <- ifelse(df_wide$SES_00A_any == 1 & df_wide$mr_y_qc__incl__smri__t1_anypassing == 1 & df_wide$outcomes_06A_any == 1 & df_wide$genetics_and_euranc == 1, 1, 0)
+
+# Criteria: household and/or neighbourhood SES at 00A, at least 1 T1 passing at any timepoint 0 2 or 4, at least 1 cognitive/grades outcome at 04A
+df_wide$use_largersample <- ifelse(df_wide$SES_00A_any == 1 & df_wide$mr_y_qc__incl__smri__t1_anypassing_to04A == 1 & df_wide$outcomes_04A_any == 1, 1, 0)
+
+# Criteria: household and/or neighbourhood SES at 00A, at least 1 T1 passing at any timepoint, at least 1 cognitive/grades outcome at 06A
+df_wide$use_distal <- ifelse(df_wide$SES_00A_any == 1 & df_wide$mr_y_qc__incl__smri__t1_anypassing_to04A == 1 & df_wide$outcomes_06A_any == 1, 1, 0)
+
+```
+
+### Flow diagram of participant inclusion (T0-T6)
+```{r}
+
+output_file <- paste0(output_data_path, "participant_flow_diagram_T0-6.txt")
+
+    # Open the file for appending results
+    capture.output({
+
+      cat("#### PARTICIPANT FLOW DIAGRAM ####", "\n")
+      cat("Note: Here we continue to reduce the dataset by the exclusion criteria, reporting the n for exclusions, until we reach the final dataset", "\n")
+      cat("As at date: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n", "\n")
+      cat("Total unique participants:", length(unique(df_wide$participant_id)), "\n")
+      flow_df <- df_wide
+      cat("Total with any SES at baseline:", sum(df_wide$SES_00A_any == 1), "\n")
+      cat("Excluded as no SES info at baseline:", sum(df_wide$SES_00A_any == 0), "\n")
+      flow_df <- flow_df[flow_df$SES_00A_any == 1, ]
+      cat("Total with sMRI data at any timepoint:", sum(flow_df$mr_y_qc__incl__smri__t1_anypresent == 1), "\n")
+      cat("Excluded as no sMRI data at any timepoint:", sum(flow_df$mr_y_qc__incl__smri__t1_anypresent == 0), "\n")
+      flow_df <- flow_df[flow_df$mr_y_qc__incl__smri__t1_anypresent == 1, ]
+      cat("Total with sMRI data passing at any timepoint:", sum(flow_df$mr_y_qc__incl__smri__t1_anypassing == 1), "\n")
+      cat("Excluded as no sMRI data passing at any timepoint:", sum(flow_df$mr_y_qc__incl__smri__t1_anypassing == 0), "\n")
+      flow_df <- flow_df[flow_df$mr_y_qc__incl__smri__t1_anypassing == 1, ]
+      cat("Total with any cognitive/grades data at 6-year follow up:", sum(flow_df$outcomes_06A_any == 1), "\n")
+      cat("Excluded as no cognitive/grades data at 6-year follow up:", sum(flow_df$outcomes_06A_any == 0), "\n", "\n")
+
+      cat("#### FINAL INCLUSION ####", "\n")
+      cat("Primary analysis (any T0, T2, T4, T6 brain -> T6 outcome):", sum(df_wide$use_main), "\n")
+      cat("Secondary genetics analysis in any ancestry (any T0, T2, T4, T6 brain -> T6 outcome):", sum(df_wide$genetics_available[df_wide$use_main == 1]), "\n")
+      cat("Secondary analysis with only Europeans (any T0, T2, T4, T6 brain -> T6 outcome and European ancestry):", sum(df_wide$use_main[df_wide$`eur_ancestry_ses-00A` == 1], na.rm=T), "\n")
+      cat("Genetics analysis (any T0, T2, T4, T6 brain -> T6 outcome and European ancestry with PGS):", sum(df_wide$use_genes, na.rm=T), "\n")
+      cat("Distal outcome analysis (any T0, T2, T4 brain -> T6 outcome):", sum(df_wide$use_distal), "\n")
+
+      cat("#### MAIN SAMPLE BY SES and OUTCOME ####", "\n")
+      cat("Household SES + grades:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_household) & !is.na(df_wide$`fc_p_sag_005_ses-06A`), 1, 0)), "\n")
+      cat("Household SES + cryst:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_household) & !is.na(df_wide$`Crystallized_Calc_ses-06A`), 1, 0)), "\n")
+      cat("Household SES + flanker:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_household) & !is.na(df_wide$`nc_y_nihtb__flnkr__uncor_score_ses-06A`), 1, 0)), "\n")
+      cat("Household SES + dimensional card sort:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_household) & !is.na(df_wide$`nc_y_nihtb__crdst__uncor_score_ses-06A`), 1, 0)), "\n")
+      cat("Household SES + pattern comparison:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_household) & !is.na(df_wide$`nc_y_nihtb__pttcp__uncor_score_ses-06A`), 1, 0)), "\n")
+      cat("Neighbourhood SES + grades:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_neighbourhood) & !is.na(df_wide$`fc_p_sag_005_ses-06A`), 1, 0)), "\n")
+      cat("Neighbourhood SES + cryst:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_neighbourhood) & !is.na(df_wide$`Crystallized_Calc_ses-06A`), 1, 0)), "\n")
+      cat("Neighbourhood SES + flanker:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_neighbourhood) & !is.na(df_wide$`nc_y_nihtb__flnkr__uncor_score_ses-06A`), 1, 0)), "\n")
+      cat("Neighbourhood SES + dimensional card sort:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_neighbourhood) & !is.na(df_wide$`nc_y_nihtb__crdst__uncor_score_ses-06A`), 1, 0)), "\n")
+      cat("Neighbourhood SES + pattern comparison:", sum(ifelse(df_wide$use_main == 1 & !is.na(df_wide$SES_neighbourhood) & !is.na(df_wide$`nc_y_nihtb__pttcp__uncor_score_ses-06A`), 1, 0)), "\n", "\n", "\n", "\n")
+
+    }, file = output_file, append = TRUE)
+    
+lines <- readLines(output_file)
+cat(tail(lines, 37), sep="\n")
+
+```
+
+# Save data as .rds for modelling {.hidden}
+```{r}
+
+# Convert all instances of "ses-0XA" to "ses0XA"
+colnames(df_wide) <- gsub("-", "", colnames(df_wide))
+# Save dataset
+saveRDS(df_wide, paste0(output_data_path,"lgcm_data.rds"))
+
+```
+
+
+### Inspect and save histograms of key variables (primary sample)
+```{r}
+
+# Note: we do not include the PGS in these histograms as this is the full sample and they will therefore appear skewed until we restrict to the european ancestry group
+
+df_wide$`Age (baseline)` <- df_wide$ab_g_dyn__visit_age_ses00A 
+df_wide$`Age (year 2)` <- df_wide$ab_g_dyn__visit_age_ses02A
+df_wide$`Age (year 4)` <- df_wide$ab_g_dyn__visit_age_ses04A
+df_wide$`Age (year 6)` <- df_wide$ab_g_dyn__visit_age_ses06A
+df_wide$`Household SES` <- df_wide$SES_household 
+df_wide$`Neighborhood SES` <- df_wide$SES_neighbourhood
+df_wide$`Thickness (baseline)` <- df_wide$mr_y_smri__thk__dsk_mean_ses00A
+df_wide$`Thickness (year 2)` <- df_wide$mr_y_smri__thk__dsk_mean_ses02A
+df_wide$`Thickness (year 4)` <- df_wide$mr_y_smri__thk__dsk_mean_ses04A
+df_wide$`Thickness (year 6)` <- df_wide$mr_y_smri__thk__dsk_mean_ses06A
+df_wide$`Area (baseline)` <- df_wide$mr_y_smri__area__dsk_sum_ses00A
+df_wide$`Area (year 2)` <- df_wide$mr_y_smri__area__dsk_sum_ses02A
+df_wide$`Area (year 4)` <- df_wide$mr_y_smri__area__dsk_sum_ses04A
+df_wide$`Area (year 6)` <- df_wide$mr_y_smri__area__dsk_sum_ses06A
+df_wide$`Volume (baseline)` <- df_wide$mr_y_smri__vol__dsk_sum_ses00A
+df_wide$`Volume (year 2)` <- df_wide$mr_y_smri__vol__dsk_sum_ses02A
+df_wide$`Volume (year 4)` <- df_wide$mr_y_smri__vol__dsk_sum_ses04A
+df_wide$`Volume (year 6)` <- df_wide$mr_y_smri__vol__dsk_sum_ses06A
+df_wide$`Crystallized (year 6)` <- df_wide$Crystallized_Calc_ses06A
+df_wide$`Flanker (year 6)` <- df_wide$nc_y_nihtb__flnkr__uncor_score_ses06A
+df_wide$`Card sort (year 6)` <- df_wide$nc_y_nihtb__crdst__uncor_score_ses06A
+df_wide$`Processing speed (year 6)` <- df_wide$nc_y_nihtb__pttcp__uncor_score_ses06A
+df_wide$`School grades (year 6)` <- df_wide$fc_p_sag_005_ses06A
+
+cols <- c("Age (baseline)", 
+"Age (year 2)",
+"Age (year 4)",
+"Age (year 6)",
+"Thickness (baseline)",
+"Thickness (year 2)",
+"Thickness (year 4)",
+"Thickness (year 6)",
+"Area (baseline)",
+"Area (year 2)",
+"Area (year 4)",
+"Area (year 6)",
+"Volume (baseline)",
+"Volume (year 2)",
+"Volume (year 4)",
+"Volume (year 6)",
+"Crystallized (year 6)",
+"Flanker (year 6)",
+"Card sort (year 6)",
+"Processing speed (year 6)",
+"School grades (year 6)",
+"Household SES",
+"Neighborhood SES")
+
+# Make data long format
+df_long <- df_wide %>% filter(use_main == 1) %>% 
+  dplyr::select(all_of(cols)) %>%
+  tidyr::pivot_longer(cols = everything(), names_to = "variable", values_to = "value")
+
+# Remove the 1 person with incorrect age data
+df_long[df_long$variable == "Age (year 6)" & df_long$value < 13.7, "value"] = NA
+
+# Order the plot 
+df_long$variable_ordered <- factor(df_long$variable, levels = cols)
+
+# Plot the data
+p <- ggplot(df_long, aes(x = value)) +
+  geom_histogram(bins = 30, fill = "grey50", color = "black") +
+  facet_wrap(~variable_ordered, scales = "free", ncol = 4) +
+  theme_minimal() +
+  labs(title = "Histograms by time point", x = "Value", y = "Count")
+ggsave(paste0(output_data_path, "variable_histograms_primarysample.png"), p, width = 11, height = 11)
+p
+
+
+```
+
